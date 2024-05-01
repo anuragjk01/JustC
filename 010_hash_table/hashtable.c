@@ -17,6 +17,7 @@ typedef struct node_s {
 int hashFunction(hashMap_t *hm, char *key, unsigned int *hash);
 int initHashMap(hashMap_t **hm, size_t itemSize, unsigned int mapLen);
 int pushKeyVal(hashMap_t *hm, char *key, char *value);
+node_t* getNode(hashMap_t *hm, char *key);
 /************* Main Function *************************************************/
 void main()
 {
@@ -24,18 +25,27 @@ void main()
 	node_t *node = NULL;
 	unsigned int hash = 0;
 
-	initHashMap(&hm, sizeof(node_t), 100);
+	if(initHashMap(&hm, sizeof(node_t), 100) < 0){
+		printf("Error failed!!\n");
+	}
 
-	pushKeyVal(hm, "key", "value");
+	pushKeyVal(hm, "key", "012");
+	pushKeyVal(hm, "anurag", "345");
+	pushKeyVal(hm, "hello", "678");
+	pushKeyVal(hm, "world", "910");
+	pushKeyVal(hm, "good", "111");
+	pushKeyVal(hm, "bye", "121");
+	pushKeyVal(hm, "value", "141");
 
-	if(!hashFunction(hm, "anurag", &hash))
-		printf("%u\n", hash);	
+	node = getNode(hm, "key");
+	printf("Key:%s, value:%s\n", node->key, node->value);
+	node = getNode(hm, "bye");
+	printf("Key:%s, value:%s\n", node->key, node->value);
+	node = getNode(hm, "world");
+	printf("Key:%s, value:%s\n", node->key, node->value);
+	node = getNode(hm, "bye");
+	printf("Key:%s, value:%s\n", node->key, node->value);
 
-	if(!hashFunction(hm, "hello_world", &hash))
-		printf("%u\n", hash);	
-
-	if(!hashFunction(hm, "abcd", &hash))
-		printf("%u\n", hash);	
 }
 
 /************* Function Definitions ******************************************/
@@ -49,7 +59,9 @@ int initHashMap(hashMap_t **hm, size_t itemSize, unsigned int mapLen)
 		return -1;
 
 	hashmap->mapLen = mapLen;
-	if( (hashmap->map = malloc(itemSize * mapLen)) == NULL )
+
+	// map should be seen as an array of pointers 
+	if( (hashmap->map = calloc(sizeof(void*), mapLen)) == NULL )
 	{
 		free(hashmap);
 		return -1;
@@ -62,6 +74,8 @@ int initHashMap(hashMap_t **hm, size_t itemSize, unsigned int mapLen)
 
 int hashFunction(hashMap_t *hm, char *key, unsigned int *hash)
 {
+	// Ref: http://www.cse.yorku.ca/~oz/hash.html
+
 	if(!hm)
 		return -1;
 
@@ -79,17 +93,46 @@ int pushKeyVal(hashMap_t *hm, char *key, char *value)
 {
 	unsigned int idx = 0;
 	node_t *node = NULL;
+	node_t **map = NULL;
 
 	if(!hm)
 		return -1;
 
-	if( !hashFunction(hm, key, &idx) )
+	if( hashFunction(hm, key, &idx) < 0 )
 		return -1;
 
 	node = malloc(sizeof(node_t));
-	node->key = malloc(strlen(key));
+	if( NULL == (node->key = malloc(strlen(key))) )
+		return -1;
 	memcpy(node->key, key, strlen(key));
-	node->value = malloc(strlen(value));
+	if( NULL == (node->value = malloc(strlen(value))) )
+		return -1;
 	memcpy(node->value, value, strlen(value));
+
+	map = hm->map;
+	node->next = map[idx];
+	map[idx] = node;
+
+	return 0;
 }
 
+node_t* getNode(hashMap_t *hm, char *key)
+{
+	unsigned int idx = 0;
+	node_t **map = NULL;
+	node_t *node = NULL;
+
+	if(!hm)
+		return NULL;
+
+	if( hashFunction(hm, key, &idx) < 0 )
+		return NULL;
+
+	map = hm->map;
+	node = map[idx];
+
+	while( node && (0 != strcmp(node->key,key)) )
+		node = node->next;
+
+	return node;
+}
